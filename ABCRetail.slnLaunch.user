@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "MVCFunctions\\MVCFunctions.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "QueueFunction\\ABCRetailFunctions.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

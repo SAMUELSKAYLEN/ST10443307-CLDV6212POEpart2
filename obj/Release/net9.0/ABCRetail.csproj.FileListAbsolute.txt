@@ -1,0 +1,10 @@
+C:\Users\lab_services_student\Desktop\GitHub\ST10443307-CLDV6212POEpart2\obj\Release\net9.0\ABCRetail.csproj.AssemblyReference.cache
+C:\Users\lab_services_student\Desktop\GitHub\ST10443307-CLDV6212POEpart2\obj\Release\net9.0\rpswa.dswa.cache.json
+C:\Users\lab_services_student\Desktop\GitHub\ST10443307-CLDV6212POEpart2\obj\Release\net9.0\ABCRetail.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\lab_services_student\Desktop\GitHub\ST10443307-CLDV6212POEpart2\obj\Release\net9.0\ABCRetail.AssemblyInfoInputs.cache
+C:\Users\lab_services_student\Desktop\GitHub\ST10443307-CLDV6212POEpart2\obj\Release\net9.0\ABCRetail.AssemblyInfo.cs
+C:\Users\lab_services_student\Desktop\GitHub\ST10443307-CLDV6212POEpart2\obj\Release\net9.0\ABCRetail.csproj.CoreCompileInputs.cache
+C:\Users\lab_services_student\Desktop\GitHub\ST10443307-CLDV6212POEpart2\obj\Release\net9.0\ABCRetail.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\lab_services_student\Desktop\GitHub\ST10443307-CLDV6212POEpart2\obj\Release\net9.0\ABCRetail.RazorAssemblyInfo.cache
+C:\Users\lab_services_student\Desktop\GitHub\ST10443307-CLDV6212POEpart2\obj\Release\net9.0\ABCRetail.RazorAssemblyInfo.cs
+C:\Users\lab_services_student\Desktop\GitHub\ST10443307-CLDV6212POEpart2\obj\Release\net9.0\ABCRetail.sourcelink.json

@@ -1,0 +1,45 @@
+﻿@model ABCRetail.Models.AddProductImage
+@{
+    ViewData["Title"] = "AddWithImage";
+}
+
+<h1>Add With Image</h1>
+
+<h4>Add Product Image</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="AddWithImage" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Name" class="control-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="EmailAddress" class="control-label"></label>
+                <input asp-for="EmailAddress" class="form-control" />
+                <span asp-validation-for="EmailAddress" class="text-danger"></span>
+            </div>
+            <div class="form-group mb-3">
+                <label asp-for="ProductImage" class="control-label"></label>
+                <input asp-for="ProductImage" class="form-control" type="file"
+                       accept="image/*" />
+                <span asp-validation-for="ProductImage" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action ="Index">Back to List</a>
+</div>
+
+@section Scripts{
+@{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
