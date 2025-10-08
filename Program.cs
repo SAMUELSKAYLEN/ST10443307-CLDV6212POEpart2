@@ -13,7 +13,7 @@ namespace ABCRetail
                 builder.Services.AddControllersWithViews();
                 builder.Services.AddHttpClient();
                 // Register Azure Storage Service
-                builder.Services.AddScoped<IAzureStorageService, AzureStorageService>();
+                builder.Services.AddScoped<IFunctionsApi, FunctionsApiClient>();
 
                 // Add logging
                 builder.Services.AddLogging();

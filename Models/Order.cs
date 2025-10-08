@@ -4,19 +4,16 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ABCRetail.Models
 {
-    public class Order : ITableEntity
+    public class Order
     {
-        public string PartitionKey { get; set; } = "Order";
-
+        public string PartitionKey { get; set; } = string.Empty;
         public string RowKey { get; set; } = Guid.NewGuid().ToString();
-
-        public DateTimeOffset? Timestamp { get; set; }
-
         public ETag ETag { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
 
         [Display(Name = "Order ID")]
 
-        public string OrderID => RowKey;
+        public string OrderID { get; set; } = string.Empty;
 
         [Required]
         [Display(Name = "Customer")]

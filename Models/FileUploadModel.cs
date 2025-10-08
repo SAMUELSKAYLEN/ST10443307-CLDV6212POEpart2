@@ -7,7 +7,7 @@ namespace ABCRetail.Models
         [Required]
         [Display(Name = "Proof of Payment")]
 
-        public IFormFile ProofOfPayment { get; set; }
+        public IFormFile? ProofOfPayment { get; set; }
 
         [Display(Name = "Order ID")]
 

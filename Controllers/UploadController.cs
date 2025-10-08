@@ -6,12 +6,12 @@ namespace ABCRetail.Controllers
 {
     public class UploadController : Controller
     {
-        private readonly IAzureStorageService _storageService; // Added underscore
+        private readonly IFunctionsApi _api;
 
 
-        public UploadController(IAzureStorageService storageService)
+        public UploadController(IFunctionsApi api)
         {
-            _storageService = storageService; // Added underscore
+            _api = api;
         }
         public IActionResult Index()
         {
@@ -22,34 +22,30 @@ namespace ABCRetail.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Index(FileUploadModel model)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid) return View(model);
+
+            try
             {
-                try
+                if (model.ProofOfPayment is null || model.ProofOfPayment.Length == 0)
                 {
-                    if (model.ProofOfPayment != null && model.ProofOfPayment.Length > 0)
-                    {
-                        // Upload to blob storage
-                        var fileName = await _storageService.UploadFileAsync(model.ProofOfPayment, "payment-proofs"); // Added underscore
-
-                        // Also upload to file share for contracts
-                        await _storageService.UploadToFileShareAsync(model.ProofOfPayment, "contracts", "payments"); // Added underscore
-
-                        TempData["Success"] = $"File uploaded successfully! File name: {fileName}";
-
-                        // Clear the model for a fresh form
-                        return View(new FileUploadModel());
-                    }
-                    else
-                    {
-                        ModelState.AddModelError("ProofOfPayment", "Please select a file to upload.");
-                    }
+                    ModelState.AddModelError("ProofOfPayment", "Please select a file to upload.");
+                    return View(model);
                 }
-                catch (Exception ex)
-                {
-                    ModelState.AddModelError("", $"Error uploading file: {ex.Message}");
-                }
+
+                var fileName = await _api.UploadProofOfPaymentAsync(
+                    model.ProofOfPayment,
+                    model.OrderID,
+                    model.CustomerName
+                );
+
+                TempData["Success"] = $"File uploaded successfully! File name: {fileName}";
+                return View(new FileUploadModel());
             }
-            return View(model);
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"Error uploading file: {ex.Message}");
+                return View(model);
+            }
         }
     }
 }

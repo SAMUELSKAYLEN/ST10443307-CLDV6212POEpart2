@@ -9,23 +9,23 @@ namespace ABCRetail.Controllers
     public class OrderController : Controller
     {
 
-        private readonly IAzureStorageService _storageService;
+        private readonly IFunctionsApi _api;
 
-        public OrderController(IAzureStorageService storageService)
+        public OrderController(IFunctionsApi api)
         {
-            _storageService = storageService;
+            _api = api;
         }
 
         public async Task<IActionResult> Index()
         {
-            var orders = await _storageService.GetAllEntitiesAsync<Order>();
-            return View(orders);
+            var orders = await _api.GetOrdersAsync();
+            return View(orders.OrderByDescending(o => o.OrderDate).ToList());
         }
 
         public async Task<IActionResult> Create()
         {
-            var customers = await _storageService.GetAllEntitiesAsync<Customer>();
-            var products = await _storageService.GetAllEntitiesAsync<Product>();
+            var customers = await _api.GetCustomersAsync();
+            var products = await _api.GetProductsAsync();
 
             var viewModel = new OrderCreateViewModel
             {
@@ -35,6 +35,8 @@ namespace ABCRetail.Controllers
 
             return View(viewModel);
         }
+
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(OrderCreateViewModel model)
@@ -44,13 +46,12 @@ namespace ABCRetail.Controllers
                 try
                 {
                     // Get customer and product details
-                    var customer = await _storageService.GetEntityAsync<Customer>("Customer", model.CustomerId);
-                    var product = await _storageService.GetEntityAsync<Product>("Product", model.ProductID);
-
+                    var customer = await _api.GetCustomerAsync(model.CustomerId);
+                    var product = await _api.GetProductAsync(model.ProductID);
 
                     if (customer == null || product == null)
                     {
-                        ModelState.AddModelError("", "Invalid customer or product selected.");
+                        ModelState.AddModelError(string.Empty, "Invalid customer or product selected.");
                         await PopulateDropdowns(model);
                         return View(model);
                     }
@@ -63,126 +64,67 @@ namespace ABCRetail.Controllers
                         return View(model);
                     }
 
-                    // Create order
-                    var order = new Order
-                    {
-                        CustomerID = model.CustomerId,
-                        Username = customer.Username,
-                        ProductID = model.ProductID,
-                        ProductName = product.ProductName,
-                        OrderDate = DateTime.SpecifyKind(model.OrderDate, DateTimeKind.Utc), 
-                        Quantity = model.Quantity,
-                        UnitPrice = product.Price,
-                        TotalPrice = product.Price * model.Quantity,
-                        Status = "Submitted" // Always starts as Submitted
-                    };
-                    await _storageService.AddEntityAsync(order);
-
-                    // Update product stock
-                    product.StockAvailable -= model.Quantity;
-                    await _storageService.UpdateEntityAsync(product);
-
-                    // Send queue message for new order
-                    var orderMessage = new
-                    {
-                        OrderId = order.OrderID,
-                        CustomerId = order.CustomerID,
-                        CustomerName = customer.Name + " " + customer.Surname,
-                        ProductName = product.ProductName,
-                        Quantity = order.Quantity,
-                        TotalPrice = order.TotalPrice,
-                        OrderDate = order.OrderDate,
-                        Status = order.Status
-                    };
-
-                    await _storageService.SendMessageAsync("order-notifications", JsonSerializer.Serialize(orderMessage));
-
-                    // Send stock update message
-                    var stockMessage = new
-                    {
-                        ProductId = product.ProductID,
-                        ProductName = product.ProductName,
-                        PreviousStock = product.StockAvailable - model.Quantity,
-                        NewStock = product.StockAvailable,
-                        UpdatedBy = "Order System",
-                        UpdateDate = DateTime.UtcNow
-                    };
-
-                    await _storageService.SendMessageAsync("stock-updates", JsonSerializer.Serialize(stockMessage));
+                    // Create order 
+                    var saved = await _api.CreateOrderAsync(model.CustomerId, model.ProductID, model.Quantity);
 
                     TempData["Success"] = "Order created successfully!";
                     return RedirectToAction(nameof(Index));
                 }
                 catch (Exception ex)
                 {
-                    ModelState.AddModelError("", $"Error creating order: {ex.Message}");
+                    ModelState.AddModelError(string.Empty, $"Error creating order: {ex.Message}");
+                    await PopulateDropdowns(model);
+                    return View(model);
                 }
             }
+
+            //re-populate dropdowns and return view
             await PopulateDropdowns(model);
             return View(model);
-
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        // DETAILS 
         public async Task<IActionResult> Details(string id)
         {
-            if (string.IsNullOrEmpty(id))
-            {
-                return NotFound();
-            }
-
-            var order = await _storageService.GetEntityAsync<Order>("Order", id);
-            if (order == null)
-            {
-                return NotFound();
-            }
-
-            return View(order);
+            if (string.IsNullOrWhiteSpace(id)) return NotFound();
+            var order = await _api.GetOrderAsync(id);
+            return order is null ? NotFound() : View(order);
         }
 
+        // EDIT (GET) - typically only status is editable
         public async Task<IActionResult> Edit(string id)
         {
-            if (string.IsNullOrEmpty(id))
-            {
-                return NotFound();
-            }
-
-            var order = await _storageService.GetEntityAsync<Order>("Order", id);
-            if (order == null)
-            {
-                return NotFound();
-            }
-
-            return View(order);
+            if (string.IsNullOrWhiteSpace(id)) return NotFound();
+            var order = await _api.GetOrderAsync(id);
+            return order is null ? NotFound() : View(order);
         }
 
+        // EDIT (POST) - status only
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Order order)
+        public async Task<IActionResult> Edit(Order posted)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid) return View(posted);
+            try
             {
-                try
-                {
-                    await _storageService.UpdateEntityAsync(order);
-                    TempData["Success"] = "Order updated successfully!";
-                    return RedirectToAction(nameof(Index));
-                }
-                catch (Exception ex)
-                {
-                    ModelState.AddModelError("", $"Error updating order: {ex.Message}");
-                }
+                await _api.UpdateOrderStatusAsync(posted.OrderID, posted.Status.ToString());
+                TempData["Success"] = "Order updated successfully!";
+                return RedirectToAction(nameof(Index));
             }
-            return View(order);
+            catch (Exception ex)
+            {
+                ModelState.AddModelError(string.Empty, $"Error updating order: {ex.Message}");
+                return View(posted);
+            }
         }
 
+        // DELETE
         [HttpPost]
         public async Task<IActionResult> Delete(string id)
         {
             try
             {
-                await _storageService.DeleteEntityAsync<Order>("Order", id);
+                await _api.DeleteOrderAsync(id);
                 TempData["Success"] = "Order deleted successfully!";
             }
             catch (Exception ex)
@@ -192,13 +134,14 @@ namespace ABCRetail.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // AJAX: price/stock Lookup
         [HttpGet]
         public async Task<JsonResult> GetProductPrice(string productId)
         {
             try
             {
-                var product = await _storageService.GetEntityAsync<Product>("Product", productId);
-                if (product != null)
+                var product = await _api.GetProductAsync(productId);
+                if (product is not null)
                 {
                     return Json(new
                     {
@@ -216,35 +159,13 @@ namespace ABCRetail.Controllers
             }
         }
 
+        // AJAX: status update
         [HttpPost]
         public async Task<IActionResult> UpdateOrderStatus(string id, string newStatus)
         {
             try
             {
-                var order = await _storageService.GetEntityAsync<Order>("Order", id);
-                if (order == null)
-                {
-                    return Json(new { success = false, message = "Order not found" });
-                }
-
-                var previousStatus = order.Status;
-                order.Status = newStatus;
-                await _storageService.UpdateEntityAsync(order);
-
-                // Send queue message for status update
-                var statusMessage = new
-                {
-                    OrderId = order.OrderID,
-                    CustomerId = order.CustomerID,
-                    CustomerName = order.Username,
-                    ProductName = order.ProductName,
-                    PreviousStatus = previousStatus,
-                    NewStatus = newStatus,
-                    UpdatedDate = DateTime.UtcNow,
-                    UpdatedBy = "System"
-                };
-
-                await _storageService.SendMessageAsync("order-notifications", JsonSerializer.Serialize(statusMessage));
+                await _api.UpdateOrderStatusAsync(id, newStatus);
                 return Json(new { success = true, message = $"Order status updated to {newStatus}" });
             }
             catch (Exception ex)
@@ -255,11 +176,8 @@ namespace ABCRetail.Controllers
 
         private async Task PopulateDropdowns(OrderCreateViewModel model)
         {
-            model.Customers = await _storageService.GetAllEntitiesAsync<Customer>();
-            model.Products = await _storageService.GetAllEntitiesAsync<Product>();
+            model.Customers = await _api.GetCustomersAsync();
+            model.Products = await _api.GetProductsAsync();
         }
     }
 }
-   
-    
-

@@ -6,15 +6,16 @@ namespace ABCRetail.Controllers
 {
     public class CustomerController : Controller
     {
-        private readonly IAzureStorageService _storageService;
-        public CustomerController(IAzureStorageService storageService)
+        private readonly IFunctionsApi _api;
+        public CustomerController(IFunctionsApi api)
         {
-            _storageService = storageService;
+            _api = api;
         }
+
 
         public async Task<IActionResult> Index()
         {
-            var customers = await _storageService.GetAllEntitiesAsync<Customer>();
+            var customers = await _api.GetCustomersAsync();
             return View(customers);
         }
 
@@ -27,31 +28,31 @@ namespace ABCRetail.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Customer customer)
         {
-            if (ModelState.IsValid)
+            if (ModelState.IsValid) return View(customer);
             {
                 try
                 {
-                    await _storageService.AddEntityAsync(customer);
+                    await _api.CreateCustomerAsync(customer);
                     TempData["Success"] = "Customer created successfully";
                     return RedirectToAction(nameof(Index));
                 }
                 catch (Exception ex)
                 {
                     ModelState.AddModelError("", $"Error creating customer: {ex.Message}");
+                    return View(customer);
                 }
             }
-            return View(customer);
         }
 
-        
+
         public async Task<IActionResult> Edit(string id)
         {
-            if (string.IsNullOrEmpty(id))
+            if (string.IsNullOrWhiteSpace(id))
             {
                 return NotFound();
             }
 
-            var customer = await _storageService.GetEntityAsync<Customer>("Customer", id);
+            var customer = await _api.GetCustomerAsync(id);
             if (customer == null)
             {
                 return NotFound();
@@ -60,36 +61,26 @@ namespace ABCRetail.Controllers
             return View(customer);
         }
 
-        [HttpPost]
+        [HttpPost] 
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Customer customer)
         {
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    var originalCustomer = await _storageService.GetEntityAsync<Customer>("Customer", customer.RowKey);
-                    if (originalCustomer == null) 
-                    {
-                        return NotFound();
-                    }
-
-                    originalCustomer.Name = customer.Name;
-                    originalCustomer.Surname = customer.Surname;
-                    originalCustomer.EmailAddress = customer.EmailAddress;
-                    originalCustomer.Username = customer.Username;
-                    originalCustomer.ShippingAddress = customer.ShippingAddress;
-
-                    await _storageService.UpdateEntityAsync(originalCustomer);
-                    TempData["Success"] = "Customer updated successfully!";
-                    return RedirectToAction(nameof(Index));
-                }
-                catch (Exception ex)
-                {
-                    ModelState.AddModelError("", $"Error updating customer: {ex.Message}");
-                }
+            if (!ModelState.IsValid) 
+            { 
+                return View(customer);
             }
-            return View(customer);
+
+            try
+            {
+                await _api.UpdateCustomerAsync(customer.CustomerID, customer);
+                TempData["Success"] = "Customer updated successfully!";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"Error updating customer: {ex.Message}");
+                return View(customer);
+            }
         }
 
         [HttpPost]
@@ -97,7 +88,7 @@ namespace ABCRetail.Controllers
         {
             try
             {
-                await _storageService.DeleteEntityAsync<Customer>("Customer", id);
+                await _api.DeleteCustomerAsync(id);
                 TempData["Success"] = "Customer deleted successfully!";
             }
             catch (Exception ex)
